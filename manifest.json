@@ -1,7 +1,7 @@
 {
   "id": "smiles-structure-preview",
   "name": "SMILES Structure Preview",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "minAppVersion": "1.14.4",
   "description": "Render SMILES and SMARTS code blocks as chemical structures, with a button to flip each one between the structures and their source.",
   "author": "Leonardo Marques",

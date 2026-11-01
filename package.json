@@ -1,6 +1,6 @@
 {
   "name": "smiles-structure-preview",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "Obsidian plugin: render smiles and smarts code blocks as chemical structures.",
   "license": "MIT",

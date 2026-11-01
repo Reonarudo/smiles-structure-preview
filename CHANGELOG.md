@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2 (2026-11-01)
+
+- Releases are built by GitHub Actions from the tagged commit, with signed build provenance
+  attestations for `main.js`, `manifest.json` and `styles.css`. Check a download with
+  `gh attestation verify main.js -R Reonarudo/smiles-structure-preview`.
+- Releases carry only the files Obsidian installs; `SHA256SUMS` is gone, as the attestations
+  cover it.
+
 ## 0.1.1 (2026-11-01)
 
 - The minimum Obsidian version is now 1.14.4, the version every check ran against; 1.5.0 was
