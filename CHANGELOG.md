@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-11-01, pre-release)
 
 First version, ported from the VS Code extension
 [smiles-structure-preview](https://github.com/Reonarudo/smiles-markdown-preview) 0.4.0.
@@ -30,4 +30,5 @@ First version, ported from the VS Code extension
 - Structures draw in embedded notes, hover previews, Canvas and PDF export, and are built with
   Obsidian's DOM helpers, so pop-out windows get their own elements.
 - On an Obsidian whose Chromium lacks `light-dark()`, structures keep their white card.
+- Mobile: the plugin is not desktop-only; on touch devices the source button stays visible.
 - Commands: restart the renderer; show every structure in the current note.

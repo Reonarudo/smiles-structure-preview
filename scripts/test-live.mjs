@@ -603,6 +603,53 @@ try {
     await page.evaluate((id) => app.plugins.plugins[id].updateSettings({ debug: false }), manifest.id);
   });
 
+  await check('in Obsidian\'s phone emulation the plugin loads, structures draw, and the button shows without hover and flips on a tap', async () => {
+    const reloaded = async () => {
+      for (let i = 0; i < 80; i++) {
+        await sleep(250);
+        const next = browser.contexts().flatMap((context) => context.pages()).find((p) => p.url().includes('index.html'));
+        if (next && await next.evaluate(() => window.app?.workspace?.layoutReady === true).catch(() => false)) return next;
+      }
+      throw new Error('Obsidian did not come back after switching emulation');
+    };
+    await page.evaluate(() => app.emulateMobile(true)).catch(() => {});
+    page = await reloaded();
+    await page.setViewportSize({ width: 430, height: 6000 });
+    const phone = await page.evaluate((id) => ({ mobile: document.body.classList.contains('is-mobile'), loaded: !!app.plugins.plugins[id] }), manifest.id);
+    assert.deepEqual(phone, { mobile: true, loaded: true });
+    await page.evaluate(async () => {
+      await app.workspace.getLeaf(false).openFile(app.vault.getAbstractFileByPath('view-toggle.md'), { state: { mode: 'preview' } });
+    });
+    let fences = [];
+    for (let i = 0; i < 60; i++) {
+      await sleep(250);
+      fences = await page.evaluate((base) => [...document.querySelectorAll(`.workspace-leaf.mod-active .markdown-reading-view .${base}-fence`)].map((fence) => ({
+        drawn: !!fence.querySelector(`.${base}-rendering svg.${base}, .${base}-error`),
+        button: getComputedStyle(fence.querySelector(`.${base}-toggle`)).opacity })), BASE);
+      if (fences.length === FIXTURE.fences && fences.every((fence) => fence.drawn)) break;
+    }
+    assert.equal(fences.length, FIXTURE.fences);
+    assert.ok(fences.every((fence) => fence.drawn && fence.button === '1'), JSON.stringify(fences));
+    await page.screenshot({ path: join(shots, 'phone.png') });
+    const tap = async () => {
+      const box = await page.evaluate((base) => {
+        const button = document.querySelectorAll(`.workspace-leaf.mod-active .markdown-reading-view .${base}-toggle`)[0];
+        button.scrollIntoView({ block: 'center' });
+        const r = button.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      }, BASE);
+      await page.mouse.click(box.x, box.y);
+      await sleep(200);
+      return page.evaluate((base) => document.querySelectorAll(`.workspace-leaf.mod-active .markdown-reading-view .${base}-fence`)[0].getAttribute('data-view'), BASE);
+    };
+    assert.equal(await tap(), 'source');
+    assert.equal(await tap(), null);
+    await page.evaluate(() => app.emulateMobile(false)).catch(() => {});
+    page = await reloaded();
+    await page.setViewportSize({ width: 1200, height: 4000 });
+    assert.equal(await page.evaluate(() => document.body.classList.contains('is-mobile')), false);
+  });
+
   await check('the renderer runs in a browser Worker and stops with the plugin', async () => {
     const stopped = await page.evaluate(async (id) => {
       const plugin = app.plugins.plugins[id];

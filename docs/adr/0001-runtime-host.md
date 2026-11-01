@@ -73,5 +73,9 @@ What the smiles worker needs, checked for this port:
 - The plugin's worker entry and host must be kept in step with the renderer's `worker.ts` and
   `runtime.ts` when the renderer changes; `test/worker.test.ts` runs the embedded bundle against
   the real engine.
-- `isDesktopOnly` stays `true` until the plugin is tried on mobile, although nothing in it needs
-  Node or Electron.
+- Nothing in the plugin needs Node or Electron, so it is not desktop-only. A blob-URL Web Worker
+  is available in the mobile apps' web views, and OpenChemLib is plain JavaScript (its one Node
+  path, `Resources.registerFromNodejs`, is guarded by `typeof process` and never called). Checked
+  under Obsidian's mobile emulation, to be confirmed on devices through a BRAT pre-release. On a
+  phone the 1.3 MB `main.js` and OpenChemLib's start-up (evaluation plus two warm-up depictions)
+  cost more than on a desktop; the worker starts only when the first structure is drawn.

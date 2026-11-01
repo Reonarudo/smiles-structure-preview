@@ -115,7 +115,12 @@ PDFs (in light colours). Settings appear in Obsidian's settings search on 1.13 a
 Obsidian whose built-in Chromium predates `light-dark()`, structures keep the white card in dark
 themes.
 
-Desktop only for now.
+Works on desktop and on Obsidian's mobile apps, where the source button stays visible (there is
+no hover to reveal it). Nothing in the plugin needs Node or Electron. On a phone, mind that
+`main.js` is about 1.3 MB (OpenChemLib is most of it), and that the first structure in a session
+waits for the worker to load OpenChemLib and warm it up (about a third of a second on a desktop,
+longer on a phone); a vault without smiles or smarts blocks never loads it. Rows of structures wrap
+to the narrow column, and a wide molecule scales down to fit.
 
 ## Development
 
