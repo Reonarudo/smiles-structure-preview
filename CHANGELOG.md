@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 (2026-11-01)
+
+- The minimum Obsidian version is now 1.14.4, the version every check ran against; 1.5.0 was
+  never tested.
+- The description capitalizes its proper nouns.
+
 ## 0.1.0 (2026-11-01)
 
 First version, ported from the VS Code extension
