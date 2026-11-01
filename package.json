@@ -1,0 +1,29 @@
+{
+  "name": "smiles-structure-preview",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Obsidian plugin: render smiles and smarts code blocks as chemical structures.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/build.mjs --watch",
+    "lint": "tsc --noEmit",
+    "test": "node --import tsx --test test/*.test.ts",
+    "test:live": "node scripts/test-live.mjs",
+    "vault": "node scripts/dev-vault.mjs",
+    "version": "node version-bump.mjs && git add manifest.json versions.json"
+  },
+  "dependencies": {
+    "@reonarudo/smiles-renderer": "https://github.com/Reonarudo/smiles-renderer/releases/download/v1.0.0/reonarudo-smiles-renderer-1.0.0.tgz"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.3",
+    "esbuild": "0.28.2",
+    "happy-dom": "21.0.4",
+    "obsidian": "1.14.4",
+    "playwright-core": "1.63.0",
+    "tsx": "4.23.13",
+    "typescript": "7.0.2"
+  }
+}

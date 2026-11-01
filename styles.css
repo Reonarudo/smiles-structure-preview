@@ -1,0 +1,212 @@
+/* SMILES Structure Preview. Ported from smiles-markdown-preview's media/preview.css, with VS Code's
+   theme variables replaced by Obsidian's. */
+
+/* Scale a wide structure down to the column instead of letting it overflow. */
+svg.smiles {
+  max-width: 100%;
+  height: auto;
+  /* A white card: OpenChemLib's CPK colours and black bonds, exactly, in a light theme or in a
+     dark one with "Follow dark themes" off. The padding and rounding make the white read as a
+     deliberate figure. */
+  background: #fff;
+  border-radius: 6px;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+/* "Follow dark themes" (on by default): like Mermaid, the drawing sits on the page in dark-theme
+   colours. Every colour in it is `light-dark(<original>, <dark>)` (src/theme.ts,
+   src/structure-theme.ts); the drawing's colour scheme picks one, so switching themes needs no
+   re-render. Labels, captions and error cards are the plugin's own text and follow the theme. */
+svg.smiles {
+  color-scheme: light;
+}
+
+body.theme-dark.smiles-follow-dark svg.smiles {
+  background: none;
+  color-scheme: dark;
+}
+
+/* Several molecules from one fence sit side by side and wrap when the column is narrow. */
+.smiles-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1em;
+}
+
+.smiles-molecule {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .25em;
+  /* A cell may shrink below its structure's natural width, so the structure scales down. */
+  min-width: 0;
+  max-width: 100%;
+}
+
+.smiles-label {
+  font-size: .9em;
+}
+
+.smiles-figure {
+  margin: 1em 0;
+}
+
+.smiles-figure figcaption {
+  margin-top: .5em;
+  color: var(--text-muted);
+}
+
+.smiles-align-left {
+  text-align: left;
+}
+
+.smiles-align-left .smiles-row {
+  justify-content: flex-start;
+}
+
+.smiles-align-center {
+  text-align: center;
+}
+
+.smiles-align-center .smiles-row {
+  justify-content: center;
+}
+
+.smiles-align-right {
+  text-align: right;
+}
+
+.smiles-align-right .smiles-row {
+  justify-content: flex-end;
+}
+
+.smiles-error {
+  border-inline-start: 3px solid var(--text-warning);
+  padding: .5em 1em;
+  margin: 1em 0;
+  text-align: start;
+}
+
+/* In a row, a failed line's card lines up with the structures beside it. */
+.smiles-molecule > .smiles-error {
+  margin: 0;
+}
+
+.smiles-error pre {
+  white-space: pre-wrap;
+  margin: 0;
+  background: none;
+  padding: 0;
+  /* The caret line lines up under the string only in a monospace font. */
+  font-family: var(--font-monospace);
+}
+
+.smiles-loading {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ---- The view toggle. ----
+   Reading view: a button dressed as Obsidian's own "Edit this block" button (the one Mermaid and
+   every rendered code block get in Live Preview): same corner, size, colours and hover fade.
+   Live Preview: hidden, and the block always shows its structures; Obsidian's button opens the
+   fence for editing, exactly as for Mermaid. */
+
+.smiles-fence {
+  position: relative;
+}
+
+/* Keep the button's corner clear, so it never sits on a structure: a right-aligned or full-width
+   row stops short of it. */
+.smiles-fence > .smiles-rendering {
+  padding-inline-end: 36px;
+}
+
+.smiles-fence > pre {
+  display: none;
+}
+
+.smiles-fence[data-view="source"] > .smiles-rendering {
+  display: none;
+}
+
+.smiles-fence[data-view="source"] > pre {
+  display: block;
+  margin: 0;
+  padding-inline-end: 44px;
+  overflow-x: auto;
+}
+
+.smiles-fence > .smiles-toggle {
+  position: absolute;
+  inset-block-start: var(--size-2-2, 4px);
+  inset-inline-end: var(--size-2-2, 4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: auto;
+  padding: var(--size-2-2, 4px) var(--size-2-3, 6px);
+  border: none;
+  border-radius: var(--clickable-icon-radius, 8px);
+  background: transparent;
+  box-shadow: none;
+  color: var(--icon-color);
+  cursor: var(--cursor, pointer);
+  opacity: 0;
+  transition: opacity 0.07s ease-out;
+  z-index: 1;
+}
+
+.smiles-fence:hover > .smiles-toggle,
+.smiles-fence > .smiles-toggle:focus-visible {
+  opacity: 1;
+}
+
+.smiles-fence > .smiles-toggle:hover {
+  background: var(--background-modifier-hover);
+  color: var(--icon-color-hover, var(--icon-color));
+}
+
+.smiles-fence > .smiles-toggle:focus-visible {
+  box-shadow: 0 0 0 2px var(--background-modifier-border-focus, var(--interactive-accent));
+}
+
+.smiles-toggle svg {
+  width: var(--icon-size, 16px);
+  height: var(--icon-size, 16px);
+  stroke-width: var(--icon-stroke, 2px);
+}
+
+/* The glyph names the view the click leads to. */
+.smiles-toggle .smiles-icon-graph {
+  display: none;
+}
+
+.smiles-fence[data-view="source"] .smiles-toggle .smiles-icon-code {
+  display: none;
+}
+
+.smiles-fence[data-view="source"] .smiles-toggle .smiles-icon-graph {
+  display: inline;
+}
+
+/* Live Preview: Obsidian's own button is the control, and a flip made in Reading view does not
+   apply; the corner is left to Obsidian. */
+.markdown-source-view .smiles-fence > .smiles-toggle {
+  display: none;
+}
+
+.markdown-source-view .smiles-fence[data-view="source"] > .smiles-rendering {
+  display: block;
+}
+
+.markdown-source-view .smiles-fence[data-view="source"] > pre {
+  display: none;
+}
+
+.markdown-source-view .smiles-fence > .smiles-rendering {
+  padding-inline-end: 0;
+}
