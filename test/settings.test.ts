@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readSettings, timeoutMs } from '../src/settings';
+import { checkTimeout, readSettings, timeoutMs } from '../src/settings';
 
 test('stored settings are read with defaults for anything missing or out of range', () => {
   assert.deepEqual(readSettings(undefined), { depictionTimeout: 3, followDarkTheme: true, debug: false });
@@ -20,4 +20,9 @@ test('the budget is the VS Code extension\'s: seconds clamped to 0.5 to 60, in w
   assert.equal(timeoutMs(0.1), 500);
   assert.equal(timeoutMs(600), 60000);
   assert.equal(timeoutMs(Number.NaN), 3000);
+});
+
+test('a timeout outside 0.5 to 60 seconds is refused with a reason', () => {
+  for (const ok of [0.5, 3, 60]) assert.equal(checkTimeout(ok), undefined, String(ok));
+  for (const bad of [0.4, 61, Number.NaN]) assert.equal(checkTimeout(bad), 'Enter a number of seconds from 0.5 to 60.', String(bad));
 });

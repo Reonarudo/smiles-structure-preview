@@ -154,3 +154,12 @@ test('white text on a dark coloured header in its group reads on that header (a 
   const text = value(darkOf(root.querySelector('text')!, 'fill')!);
   assert.ok(contrast(text, header) >= TEXT_CONTRAST, `${JSON.stringify(text)} on ${JSON.stringify(header)}`);
 });
+
+test('a colour from a style declaration is also kept as the attribute, for a Chromium without light-dark()', () => {
+  const root = svg('<svg xmlns="http://www.w3.org/2000/svg"><path style="fill:none;stroke:rgb(0,0,0)"/><rect fill="#fff"/></svg>');
+  themeSvg(root);
+  const path = root.querySelector('path')!;
+  assert.equal(path.getAttribute('stroke'), 'rgb(0,0,0)');
+  assert.equal(path.getAttribute('fill'), null, 'fill:none is not a colour and stays a declaration only');
+  assert.equal(root.querySelector('rect')!.getAttribute('fill'), '#fff');
+});

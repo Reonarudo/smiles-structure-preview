@@ -24,5 +24,10 @@ First version, ported from the VS Code extension
   white card instead.
 - Rendering runs in a Web Worker inside Obsidian, from smiles-renderer 1.0.0's sanitizer and
   OpenChemLib 9.25.0; no Node install is needed.
-- Settings: depiction timeout (seconds per molecule), following dark themes, debug logging.
+- Settings: depiction timeout (seconds per molecule), following dark themes, debug logging; listed
+  in Obsidian's settings search (1.13 and later).
+- The renderer starts with the first structure drawn, not when Obsidian starts.
+- Structures draw in embedded notes, hover previews, Canvas and PDF export, and are built with
+  Obsidian's DOM helpers, so pop-out windows get their own elements.
+- On an Obsidian whose Chromium lacks `light-dark()`, structures keep their white card.
 - Commands: restart the renderer; show every structure in the current note.

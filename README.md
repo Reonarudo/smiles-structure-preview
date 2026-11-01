@@ -107,7 +107,13 @@ off **Follow dark themes** in the plugin's settings. See `docs/adr/0002-dark-the
 Rendering runs in a Web Worker inside Obsidian, built from smiles-renderer's worker: OpenChemLib
 (pure JavaScript) depicts each line, and the renderer's allowlist sanitizer rebuilds its SVG.
 Nothing is downloaded, installed or written to disk; the worker is embedded in `main.js`, which is
-why the plugin is about 1.2 MB (about 390 kB compressed). See `docs/adr/0001-runtime-host.md`.
+why the plugin is about 1.3 MB (about 390 kB compressed). See `docs/adr/0001-runtime-host.md`.
+
+The worker starts with the first structure drawn, so a vault without smiles or smarts blocks never
+loads OpenChemLib. Structures also draw in embedded notes, hover previews, Canvas cards and exported
+PDFs (in light colours). Settings appear in Obsidian's settings search on 1.13 and later. On an
+Obsidian whose built-in Chromium predates `light-dark()`, structures keep the white card in dark
+themes.
 
 Desktop only for now.
 

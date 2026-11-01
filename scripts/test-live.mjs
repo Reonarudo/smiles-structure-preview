@@ -179,6 +179,10 @@ try {
     await page.keyboard.press('Escape');
     await sleep(200);
   }
+  await check('the renderer does not start until a structure is drawn', async () => {
+    assert.equal(await page.evaluate((id) => !!app.plugins.plugins[id].host, manifest.id), false);
+  });
+
   await page.evaluate(async () => {
     const file = app.vault.getAbstractFileByPath('view-toggle.md');
     await app.workspace.getLeaf(false).openFile(file, { state: { mode: 'preview' } });
@@ -296,6 +300,31 @@ try {
     const [a, b] = FIXTURE.twins;
     assert.equal(fences[a].key, fences[b].key);
     assert.equal(new Set(fences.map((fence) => fence.key)).size, FIXTURE.fences - 1);
+  });
+
+  await check('without light-dark() support the original colours still draw', async () => {
+    // What a Chromium without light-dark() does: every declaration using it is dropped, and the
+    // renderer's own presentation attributes draw.
+    const fallback = await page.evaluate((base) => {
+      const svgs = [...document.querySelectorAll(`.markdown-reading-view svg.${base}`)];
+      const salt = svgs.find((one) => [...one.querySelectorAll('text')].some((t) => t.textContent === 'Cl')).cloneNode(true);
+      const aspirin = svgs[0].cloneNode(true);
+      for (const svg of [salt, aspirin]) {
+        for (const element of [svg, ...svg.querySelectorAll('*')]) {
+          const style = element.getAttribute('style');
+          if (style) element.setAttribute('style', style.split(';').filter((part) => !part.includes('light-dark(')).join(';'));
+        }
+        document.body.append(svg);
+      }
+      const chlorine = [...salt.querySelectorAll('text')].find((t) => t.textContent === 'Cl');
+      const bond = [...aspirin.querySelectorAll('line')].find((line) => line.getAttribute('stroke') === 'rgb(0,0,0)');
+      const oxygen = [...aspirin.querySelectorAll('text')].find((t) => t.textContent === 'O');
+      const out = { chlorine: getComputedStyle(chlorine).fill, bond: getComputedStyle(bond).stroke, oxygen: getComputedStyle(oxygen).fill };
+      salt.remove();
+      aspirin.remove();
+      return out;
+    }, BASE);
+    assert.deepEqual(fallback, { chlorine: 'rgb(31, 240, 31)', bond: 'rgb(0, 0, 0)', oxygen: 'rgb(255, 13, 13)' });
   });
 
   await page.screenshot({ path: join(shots, 'reading-dark.png') });
@@ -471,6 +500,107 @@ try {
     assert.deepEqual(lightLook.flatMap((svg) => svg.chlorine), ['rgb(31, 240, 31)', 'rgb(31, 240, 31)']);
     assert.deepEqual(views(light), []);
     await page.screenshot({ path: join(shots, 'reading-light.png') });
+  });
+
+  await check('a hover preview of a link to the note draws its structures with their attributes', async () => {
+    await writeFile(join(vault, 'links.md'), '# Links\n\nSee [[view-toggle]] for structures.\n');
+    await sleep(500);
+    await page.evaluate(async () => {
+      const preview = app.internalPlugins.plugins['page-preview'];
+      if (!preview.enabled) await preview.enable();
+      await app.workspace.getLeaf(false).openFile(app.vault.getAbstractFileByPath('links.md'), { state: { mode: 'preview' } });
+    });
+    await sleep(800);
+    const link = await page.evaluate(() => {
+      const a = app.workspace.activeLeaf.view.containerEl.querySelector('.markdown-reading-view a.internal-link');
+      a.scrollIntoView({ block: 'center' });
+      const r = a.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    });
+    await page.mouse.move(link.x - 80, link.y);
+    await page.mouse.move(link.x, link.y, { steps: 5 });
+    let blocks = [];
+    for (let i = 0; i < 40; i++) {
+      await sleep(250);
+      blocks = await page.evaluate((base) => [...document.querySelectorAll(`.hover-popover .${base}-fence`)].map((fence) => ({
+        drawn: !!fence.querySelector(`.${base}-rendering svg.${base}, .${base}-error`), caption: fence.querySelector('figcaption')?.textContent ?? null })), BASE);
+      if (blocks.length && blocks.every((block) => block.drawn)) break;
+    }
+    assert.ok(blocks.length >= 3, `${blocks.length} blocks in the preview`);
+    assert.ok(blocks.every((block) => block.drawn));
+    assert.ok(blocks.some((block) => block.caption === 'Figure 1: L-alanine, stereocentre marked'));
+    await page.mouse.move(5, 5);
+    await page.evaluate(async () => {
+      await app.workspace.getLeaf(false).openFile(app.vault.getAbstractFileByPath('view-toggle.md'), { state: { mode: 'preview' } });
+    });
+    await settle('reading');
+  });
+
+  await check('Export to PDF prints every structure, drawn, with its caption, in light colours and without the button', async () => {
+    const pdf = join(root, 'export.pdf');
+    // The native save dialog cannot be driven: answer it with a path. Obsidian prints from a window
+    // of its own (window.open, as for pop-outs); while it exists, record what it holds. The last
+    // record is what was printed.
+    await page.evaluate((pdf) => {
+      Object.defineProperty(require('@electron/remote').dialog, 'showSaveDialog', {
+        configurable: true, writable: true, value: async () => ({ canceled: false, filePath: pdf })
+      });
+      window.__printed = null;
+      window.__printWindow = null;
+      const open = window.open;
+      window.__restoreOpen = () => { window.open = open; };
+      window.open = (...args) => (window.__printWindow = open.apply(window, args));
+      window.__printWatch = setInterval(() => {
+        const print = window.__printWindow?.document;
+        if (!print || !print.querySelector('[class$="-fence"]')) return;
+        window.__printed = [...print.querySelectorAll('[class$="-fence"]')].map((fence) => {
+          const svg = fence.querySelector('svg:not(.svg-icon)');
+          const button = fence.querySelector('button');
+          const view = fence.ownerDocument.defaultView;
+          return { drawn: !!svg || !!fence.querySelector('[class$="-error"]'), caption: fence.querySelector('figcaption')?.textContent ?? null,
+            scheme: svg ? view.getComputedStyle(svg).colorScheme : null, button: button ? view.getComputedStyle(button).opacity : null };
+        });
+      }, 50);
+    }, pdf);
+    await page.evaluate(() => app.commands.executeCommandById('workspace:export-pdf'));
+    await sleep(800);
+    await page.evaluate(() => [...document.querySelectorAll('.modal-container button')].find((button) => /export/i.test(button.textContent)).click());
+    let written = false;
+    for (let i = 0; i < 60 && !written; i++) {
+      await sleep(250);
+      written = (await readFile(pdf).catch(() => null))?.length > 1000;
+    }
+    const printed = await page.evaluate(() => { clearInterval(window.__printWatch); return window.__printed; });
+    await page.evaluate(() => window.__restoreOpen());
+    assert.ok(written, 'the PDF was written');
+    assert.equal(printed?.length, FIXTURE.fences);
+    assert.ok(printed.every((block) => block.drawn), JSON.stringify(printed));
+    assert.ok(printed.some((block) => block.caption === 'Figure 1: L-alanine, stereocentre marked'));
+    assert.ok(printed.every((block) => block.scheme === null || block.scheme === 'light'), 'printed in light colours');
+    assert.ok(printed.every((block) => block.button === null || block.button === '0'), 'no button on paper');
+  });
+
+  await check('settings come from definitions, so Obsidian lists them, and a change keeps the saved flips', async () => {
+    await click('reading', FIXTURE.broken);
+    const shown = await page.evaluate(async (id) => {
+      app.setting.open();
+      app.setting.openTabById(id);
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      const names = [...app.setting.activeTab.containerEl.querySelectorAll('.setting-item-name')].map((el) => el.textContent);
+      const numberField = !!app.setting.activeTab.containerEl.querySelector('input[type="number"][min="0.5"][max="60"]');
+      const tab = app.setting.pluginTabs.find((one) => one.id === id);
+      await tab.setControlValue('debug', true);
+      app.setting.close();
+      return { names, numberField, debug: app.plugins.plugins[id].settings.debug, defined: tab.getSettingDefinitions().map((item) => item.control?.key) };
+    }, manifest.id);
+    assert.deepEqual(shown.names, ['Depiction timeout', 'Follow dark themes', 'Debug logging']);
+    assert.equal(shown.numberField, true, 'drawn from the definitions: the timeout is a number field');
+    assert.deepEqual(shown.defined, ['depictionTimeout', 'followDarkTheme', 'debug']);
+    assert.equal(shown.debug, true);
+    const saved = await storedToggles();
+    assert.equal(saved?.length, 1, 'the flip made before the change is still saved');
+    await click('reading', FIXTURE.broken);
+    await page.evaluate((id) => app.plugins.plugins[id].updateSettings({ debug: false }), manifest.id);
   });
 
   await check('the renderer runs in a browser Worker and stops with the plugin', async () => {

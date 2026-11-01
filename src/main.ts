@@ -59,8 +59,9 @@ interface Drawn {
 export default class SmilesPlugin extends Plugin {
   settings: Settings = DEFAULT_SETTINGS;
   private toggles!: ToggleStore;
+  /** The renderer, started by the first structure drawn (`renderer()`), not at load. */
   private host: Host | undefined;
-  private cache!: CachedRender;
+  private cache: CachedRender | undefined;
   private workerUrl: string | undefined;
   private readonly drawn = new Set<Drawn>();
   private readonly saveSoon = debounce(() => void this.persist(), 200, true);
@@ -69,9 +70,6 @@ export default class SmilesPlugin extends Plugin {
     const data = (await this.loadData()) as { settings?: unknown; toggles?: unknown } | null;
     this.settings = readSettings(data?.settings);
     this.toggles = new ToggleStore(data?.toggles, () => this.saveSoon());
-
-    this.workerUrl = URL.createObjectURL(new Blob([WORKER_SOURCE], { type: 'text/javascript' }));
-    this.startHost();
 
     // Two languages, one implementation: the word sets the notation.
     for (const word of WORDS) {
@@ -125,23 +123,31 @@ export default class SmilesPlugin extends Plugin {
     await this.saveData({ settings: this.settings, toggles: this.toggles.toJSON() });
   }
 
-  private startHost(): void {
-    const url = this.workerUrl!;
-    this.host = createHost(
+  /**
+   * The renderer, started on first use: a vault with no smiles or smarts blocks never starts the
+   * worker or loads OpenChemLib.
+   */
+  private renderer(): CachedRender {
+    if (this.cache) return this.cache;
+    this.workerUrl ??= URL.createObjectURL(new Blob([WORKER_SOURCE], { type: 'text/javascript' }));
+    const url = this.workerUrl;
+    const host = createHost(
       () => new Worker(url, { name: 'smiles-structure-preview' }) as unknown as WorkerLike,
       { timeout: timeoutMs(this.settings.depictionTimeout) }
     );
-    const host = this.host;
+    this.host = host;
     // A fresh cache with every host: timeouts measured against the old budget are retried.
     this.cache = createCache((input) => host.render(input), 96, ({ source }, result) => {
       if (result.status === 'success') for (const note of result.notes) this.log(`${source}: ${note}`);
     });
+    return this.cache;
   }
 
-  /** A fresh worker with the current settings, and every open note drawn again. */
+  /** Stop the worker; the next structure starts a fresh one with the current settings. */
   private restart(): void {
     this.host?.dispose();
-    this.startHost();
+    this.host = undefined;
+    this.cache = undefined;
     this.rerender();
   }
 
@@ -160,8 +166,7 @@ export default class SmilesPlugin extends Plugin {
   }
 
   private async process(word: Notation, source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext): Promise<void> {
-    const parts = buildFence(el.ownerDocument, source, fenceKey(source), word);
-    el.append(parts.wrapper);
+    const parts = buildFence(el, source, fenceKey(source), word);
     const drawn: Drawn = {
       notePath: ctx.sourcePath,
       wrapper: parts.wrapper,
@@ -206,8 +211,8 @@ export default class SmilesPlugin extends Plugin {
       if (child.live && !parts.rendering.hasChildNodes()) showLoading(parts.rendering, word);
     }, LOADING_DELAY_MS);
     try {
-      const cache = this.cache;
-      await drawFence(parts.rendering, word, source, placement.attributes, (input) => cache.render(input), () => child.live);
+      // The renderer starts with the first line to draw: an empty block does not start it.
+      await drawFence(parts.rendering, word, source, placement.attributes, (input) => this.renderer().render(input), () => child.live);
     } finally {
       window.clearTimeout(slow);
     }

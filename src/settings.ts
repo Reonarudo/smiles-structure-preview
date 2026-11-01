@@ -31,3 +31,10 @@ export function timeoutMs(seconds: number): number {
   const clamped = Number.isFinite(seconds) ? Math.min(TIMEOUT_RANGE.max, Math.max(TIMEOUT_RANGE.min, seconds)) : DEFAULT_SETTINGS.depictionTimeout;
   return Math.round(clamped * 1000);
 }
+
+/** Whether a depiction timeout is in range; the reason it is not, otherwise. */
+export function checkTimeout(seconds: number): string | undefined {
+  return Number.isFinite(seconds) && seconds >= TIMEOUT_RANGE.min && seconds <= TIMEOUT_RANGE.max
+    ? undefined
+    : `Enter a number of seconds from ${TIMEOUT_RANGE.min} to ${TIMEOUT_RANGE.max}.`;
+}

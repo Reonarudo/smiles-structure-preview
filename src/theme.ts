@@ -17,6 +17,10 @@
  * Text inside a group with a filled shape is then checked against that shape's dark fill;
  * near-black marks such as arrowheads are not something text sits on.
  *
+ * Where a colour was set in a style declaration, the original is also written as the presentation
+ * attribute: a Chromium without `light-dark()` drops the whole declaration, and the attribute then
+ * draws the original colour (the stylesheet keeps the white card there).
+ *
  * Pure apart from the DOM it is given; it never reads layout, so it runs the same in tests.
  */
 
@@ -282,6 +286,7 @@ export function themeSvg(svg: Element): void {
     const style = declarations(element);
     let changed = false;
     for (const property of PROPERTIES) {
+      const fromStyle = style.has(property);
       let original = own(element, property, style);
       // Text, and shapes nothing gives a fill, are drawn in the SVG default: black.
       if (original === undefined && property === 'fill' && (TEXT.has(element.localName) || SHAPES.has(element.localName)) && !inheritsFill(element, svg)) {
@@ -293,6 +298,7 @@ export function themeSvg(svg: Element): void {
       const role = roleOf(element, property, rgb);
       const dark = darkFor(role, rgb);
       style.set(property, `light-dark(${original}, ${dark.value})`);
+      if (fromStyle) element.setAttribute(property, original);
       changed = true;
       // Anything filled can be what a label sits on, except near-black marks (arrowheads, dots),
       // which become the text colour themselves.

@@ -98,30 +98,22 @@ export interface FenceParts {
   rendering: HTMLElement;
 }
 
-/** The wrapper with its toggle, an empty rendering slot, and the source view in the fence's own word. */
-export function buildFence(doc: Document, body: string, key: string, notation: Notation): FenceParts {
-  const wrapper = doc.createElement('div');
-  wrapper.className = `${BASE_CLASS}-fence`;
-  wrapper.setAttribute('data-fence-key', key);
-
-  const button = doc.createElement('button');
-  button.type = 'button';
+/**
+ * The wrapper with its toggle, an empty rendering slot, and the source view in the fence's own
+ * word, built inside `parent` (the element Obsidian hands the code block processor) with
+ * Obsidian's `createEl`, so every element belongs to the window the block is drawn in, pop-out
+ * windows included.
+ */
+export function buildFence(parent: HTMLElement, body: string, key: string, notation: Notation): FenceParts {
+  const wrapper = parent.createDiv({ cls: `${BASE_CLASS}-fence`, attr: { 'data-fence-key': key } });
   // `clickable-icon` is Obsidian's own icon-button class, so the button takes the app's look.
-  button.className = `${BASE_CLASS}-toggle clickable-icon`;
-  button.setAttribute('aria-pressed', 'false');
-  button.setAttribute('aria-label', LABEL_SHOW_SOURCE);
-  for (const icon of [ICON_CODE, ICON_GRAPH]) button.append(parseSvg(doc, icon)!);
-
-  const rendering = doc.createElement('div');
-  rendering.className = `${BASE_CLASS}-rendering`;
-
-  const pre = doc.createElement('pre');
-  const code = doc.createElement('code');
-  code.className = `language-${notation}`;
-  code.textContent = body;
-  pre.append(code);
-
-  wrapper.append(button, rendering, pre);
+  const button = wrapper.createEl('button', {
+    cls: `${BASE_CLASS}-toggle clickable-icon`,
+    attr: { type: 'button', 'aria-pressed': 'false', 'aria-label': LABEL_SHOW_SOURCE }
+  });
+  for (const icon of [ICON_CODE, ICON_GRAPH]) button.append(parseSvg(wrapper.doc, icon)!);
+  const rendering = wrapper.createDiv({ cls: `${BASE_CLASS}-rendering` });
+  wrapper.createEl('pre').createEl('code', { cls: `language-${notation}`, text: body });
   return { wrapper, button, rendering };
 }
 
@@ -140,35 +132,32 @@ export function isSourceView(wrapper: Element): boolean {
 
 /** A status line while a render is slow to arrive. */
 export function showLoading(rendering: HTMLElement, notation: Notation): void {
-  const doc = rendering.ownerDocument;
-  const line = doc.createElement('p');
-  line.className = `${BASE_CLASS}-loading`;
-  line.setAttribute('role', 'status');
-  line.textContent = `Rendering ${WORDING[notation].name}…`;
-  rendering.replaceChildren(line);
+  rendering.empty();
+  rendering.createEl('p', { cls: `${BASE_CLASS}-loading`, attr: { role: 'status' }, text: `Rendering ${WORDING[notation].name}…` });
 }
 
-/** An error card, for one cell or the whole slot. */
-function errorCard(doc: Document, text: string): HTMLElement {
-  const card = doc.createElement('div');
-  card.className = `${BASE_CLASS}-error`;
-  card.setAttribute('role', 'alert');
-  const pre = doc.createElement('pre');
-  pre.textContent = text;
-  card.append(pre);
-  return card;
+/** An error card at the end of `parent`: for one cell, or the whole slot. */
+function errorCard(parent: HTMLElement, text: string): void {
+  parent.createDiv({ cls: `${BASE_CLASS}-error`, attr: { role: 'alert' } }).createEl('pre', { text });
 }
 
 /** An error card in place of every structure. */
 export function showError(rendering: HTMLElement, text: string): void {
-  rendering.replaceChildren(errorCard(rendering.ownerDocument, text));
+  rendering.empty();
+  errorCard(rendering, text);
 }
 
-/** One line's structure, its class and natural width set, or its error card. */
-function structure(doc: Document, molecule: MoleculeLine, result: RenderResult, notation: Notation, extra: string | undefined): Element {
-  if (result.status !== 'success') return errorCard(doc, describe(result, molecule, notation));
-  const svg = parseSvg(doc, result.output);
-  if (!svg) return errorCard(doc, `The ${WORDING[notation].name} renderer returned a structure that could not be read`);
+/** One line's structure, its class and natural width set, or its error card, appended to `parent`. */
+function structure(parent: HTMLElement, molecule: MoleculeLine, result: RenderResult, notation: Notation, extra: string | undefined): void {
+  if (result.status !== 'success') {
+    errorCard(parent, describe(result, molecule, notation));
+    return;
+  }
+  const svg = parseSvg(parent.doc, result.output);
+  if (!svg) {
+    errorCard(parent, `The ${WORDING[notation].name} renderer returned a structure that could not be read`);
+    return;
+  }
   // Every colour gets its dark-theme counterpart; the stylesheet decides which one shows.
   themeStructure(svg);
   // The extra classes, `smarts` and the author's, join the `smiles` class the library put on the root.
@@ -178,69 +167,42 @@ function structure(doc: Document, molecule: MoleculeLine, result: RenderResult, 
   // scales a wide one down.
   const width = Number(svg.getAttribute('viewBox')?.trim().split(/[\s,]+/)[2]);
   if (width > 0) svg.setAttribute('width', `${width}px`);
-  return svg;
+  parent.append(svg);
 }
 
 /**
- * A single unlabelled molecule stands alone; several, or one with a label, sit side by side in a
- * row with each label beneath its structure.
+ * Each line's result in the rendering slot. A single unlabelled molecule stands alone; several, or
+ * one with a label, sit side by side in a row with each label beneath its structure. Captioned or
+ * aligned structures go in a figure, with the alt text as an accessible name inside it, so a
+ * caption stays outside the image role.
  */
-function row(doc: Document, cells: { molecule: MoleculeLine; node: Element }[]): Element {
-  const [only] = cells;
-  if (cells.length === 1 && only!.molecule.label === undefined) return only!.node;
-  const container = doc.createElement('div');
-  container.className = `${BASE_CLASS}-row`;
-  for (const { molecule, node } of cells) {
-    const cell = doc.createElement('div');
-    cell.className = `${BASE_CLASS}-molecule`;
-    cell.append(node);
-    if (molecule.label !== undefined) {
-      const label = doc.createElement('span');
-      label.className = `${BASE_CLASS}-label`;
-      label.textContent = molecule.label;
-      cell.append(label);
-    }
-    container.append(cell);
-  }
-  return container;
-}
-
-/** Alt text as an accessible name inside the figure, so a caption stays outside the image role. */
-function wrap(doc: Document, structures: Element, attributes: FenceAttributes): Element {
-  let node = structures;
-  if (attributes.alt !== undefined) {
-    const image = doc.createElement('div');
-    image.setAttribute('role', 'img');
-    image.setAttribute('aria-label', attributes.alt);
-    image.append(node);
-    node = image;
-  }
-  if (attributes.caption === undefined && attributes.align === undefined) return node;
-  const figure = doc.createElement('figure');
-  figure.className = attributes.align
-    ? `${BASE_CLASS}-figure ${BASE_CLASS}-align-${attributes.align}`
-    : `${BASE_CLASS}-figure`;
-  figure.append(node);
-  if (attributes.caption !== undefined) {
-    const caption = doc.createElement('figcaption');
-    caption.textContent = attributes.caption;
-    figure.append(caption);
-  }
-  return figure;
-}
-
-/** Each line's result in the rendering slot: one structure, or a row of cells, wrapped by the attributes. */
 export function showStructures(
   rendering: HTMLElement,
   notation: Notation,
   drawn: { molecule: MoleculeLine; result: RenderResult }[],
   attributes: FenceAttributes
 ): void {
-  const doc = rendering.ownerDocument;
   // A pattern's structure also carries `smarts`, so it can be styled apart from a molecule.
   const extra = [notation === 'smarts' ? 'smarts' : undefined, attributes.class].filter(Boolean).join(' ') || undefined;
-  const cells = drawn.map(({ molecule, result }) => ({ molecule, node: structure(doc, molecule, result, notation, extra) }));
-  rendering.replaceChildren(wrap(doc, row(doc, cells), attributes));
+  rendering.empty();
+  const figure = attributes.caption === undefined && attributes.align === undefined
+    ? rendering
+    : rendering.createEl('figure', {
+      cls: attributes.align ? `${BASE_CLASS}-figure ${BASE_CLASS}-align-${attributes.align}` : `${BASE_CLASS}-figure`
+    });
+  const holder = attributes.alt === undefined ? figure : figure.createDiv({ attr: { role: 'img', 'aria-label': attributes.alt } });
+  const [only] = drawn;
+  if (drawn.length === 1 && only!.molecule.label === undefined) {
+    structure(holder, only!.molecule, only!.result, notation, extra);
+  } else {
+    const row = holder.createDiv({ cls: `${BASE_CLASS}-row` });
+    for (const { molecule, result } of drawn) {
+      const cell = row.createDiv({ cls: `${BASE_CLASS}-molecule` });
+      structure(cell, molecule, result, notation, extra);
+      if (molecule.label !== undefined) cell.createSpan({ cls: `${BASE_CLASS}-label`, text: molecule.label });
+    }
+  }
+  if (attributes.caption !== undefined) figure.createEl('figcaption', { text: attributes.caption });
 }
 
 /**

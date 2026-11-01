@@ -25,7 +25,7 @@ const ICON_CODE = `<svg ${LUCIDE} class="svg-icon lucide-code-2 smiles-icon-code
 const ICON_GRAPH = `<svg ${LUCIDE} class="svg-icon lucide-network smiles-icon-graph">` +
   '<rect x="16" y="16" width="6" height="6" rx="1"></rect><rect x="2" y="16" width="6" height="6" rx="1"></rect><rect x="9" y="2" width="6" height="6" rx="1"></rect>' +
   '<path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"></path><path d="M12 12V8"></path></svg>';
-const TOGGLE = `<button type="button" class="smiles-toggle clickable-icon" aria-pressed="false" aria-label="Show source">${ICON_CODE}${ICON_GRAPH}</button>`;
+const TOGGLE = `<button class="smiles-toggle clickable-icon" type="button" aria-pressed="false" aria-label="Show source">${ICON_CODE}${ICON_GRAPH}</button>`;
 
 test('renders smiles fences line by line, passing the bare SMILES string through', async () => {
   let seen: unknown;
@@ -69,7 +69,7 @@ test('every block is wrapped: toggle first, rendering slot, then the source <pre
     '<pre><code class="language-smiles">CCO</code></pre></div>');
   // A smarts block's source view carries its own word.
   assert.match((await fence('smarts', '[#6]', () => structure())).outerHTML,
-    /^<div class="smiles-fence" data-fence-key="[0-9a-f]{8}"><button type="button" class="smiles-toggle clickable-icon"[\s\S]*<\/div><pre><code class="language-smarts">\[#6\]<\/code><\/pre><\/div>$/);
+    /^<div class="smiles-fence" data-fence-key="[0-9a-f]{8}"><button class="smiles-toggle clickable-icon" type="button"[\s\S]*<\/div><pre><code class="language-smarts">\[#6\]<\/code><\/pre><\/div>$/);
 });
 
 test('the fence key is FNV-1a of the exact body', () => {
@@ -107,7 +107,7 @@ test('setView flips the wrapper, the button state and its name, and back', async
 });
 
 test('the loading line and error cards sit in the rendering slot', () => {
-  const parts = buildFence(document, 'CCO', fenceKey('CCO'), 'smiles');
+  const parts = buildFence(document.createElement('div'), 'CCO', fenceKey('CCO'), 'smiles');
   showLoading(parts.rendering, 'smiles');
   assert.equal(rendering(parts.wrapper), '<p class="smiles-loading" role="status">Rendering SMILES…</p>');
   showError(parts.rendering, 'x');

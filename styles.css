@@ -27,6 +27,14 @@ body.theme-dark.smiles-follow-dark svg.smiles {
   color-scheme: dark;
 }
 
+/* A Chromium without `light-dark()` (older Obsidian installers) drops the dark colours and draws
+   the originals, so the structure keeps its white card in every theme. */
+@supports not (color: light-dark(#000, #fff)) {
+  body.theme-dark.smiles-follow-dark svg.smiles {
+    background: #fff;
+  }
+}
+
 /* Several molecules from one fence sit side by side and wrap when the column is narrow. */
 .smiles-row {
   display: flex;
