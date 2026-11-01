@@ -100,14 +100,14 @@ kept, so CPK colours that already read on a dark page (chlorine's green, the any
 as they are, black bonds take Obsidian's text colour and oxygen's dark red is lightened. SMARTS
 highlights become dark areas with their annotations readable on them. In a light theme structures
 sit on a white card with OpenChemLib's exact colours. To keep every structure on a white card, turn
-off **Follow dark themes** in the plugin's settings. See `docs/adr/0002-dark-theme-colours.md`.
+off **Follow dark themes** in the plugin's settings.
 
 ## How it renders
 
 Rendering runs in a Web Worker inside Obsidian, built from smiles-renderer's worker: OpenChemLib
 (pure JavaScript) depicts each line, and the renderer's allowlist sanitizer rebuilds its SVG.
 Nothing is downloaded, installed or written to disk; the worker is embedded in `main.js`, which is
-why the plugin is about 1.3 MB (about 390 kB compressed). See `docs/adr/0001-runtime-host.md`.
+why the plugin is about 1.3 MB (about 390 kB compressed).
 
 The worker starts with the first structure drawn, so a vault without smiles or smarts blocks never
 loads OpenChemLib. Structures also draw in embedded notes, hover previews, Canvas cards and exported

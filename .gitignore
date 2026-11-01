@@ -4,3 +4,8 @@ data.json
 build/
 .DS_Store
 test-live-failure.png
+
+# Internal design docs (ADRs, spike notes and code) stay off GitHub
+/docs/adr/
+/docs/spike-worker-threads.md
+/spike/
