@@ -566,7 +566,7 @@ try {
     await sleep(800);
     await page.evaluate(() => [...document.querySelectorAll('.modal-container button')].find((button) => /export/i.test(button.textContent)).click());
     let written = false;
-    for (let i = 0; i < 60 && !written; i++) {
+    for (let i = 0; i < 240 && !written; i++) {
       await sleep(250);
       written = (await readFile(pdf).catch(() => null))?.length > 1000;
     }

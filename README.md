@@ -111,7 +111,7 @@ why the plugin is about 1.3 MB (about 390 kB compressed).
 
 The worker starts with the first structure drawn, so a vault without smiles or smarts blocks never
 loads OpenChemLib. Structures also draw in embedded notes, hover previews, Canvas cards and exported
-PDFs (in light colours). Settings appear in Obsidian's settings search on 1.13 and later. On an
+PDFs (in light colours). Settings appear in Obsidian's settings search. On an
 Obsidian whose built-in Chromium predates `light-dark()`, structures keep the white card in dark
 themes.
 

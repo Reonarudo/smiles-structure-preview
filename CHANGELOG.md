@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3 (2026-11-01)
+
+- Settings come only from Obsidian's declarative settings definitions; the older `display()`
+  method, needed only before Obsidian 1.13, is gone (the minimum is 1.14.4).
+
 ## 0.1.2 (2026-11-01)
 
 - Releases are built by GitHub Actions from the tagged commit, with signed build provenance
